@@ -2,8 +2,10 @@ import random
 import os
 import copy
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
+import seaborn as sns
 import matplotlib.pyplot as plt
 import time # importar el mòdul time per mesurar el temps
 import p_values as p_values
@@ -11,6 +13,7 @@ import p_values as p_values
 from scipy import stats
 from skimage.metrics import structural_similarity as ssim
 from torch import optim
+from sklearn.manifold import TSNE
 # from baseDataLoader import DataLoader
 # import Schaefer2018
 from ADNI_B import ADNI_B
@@ -19,6 +22,7 @@ from ADNI_B import ADNI_B
 # %% Funció per carregar i pre-processar les dades
 def load_and_preprocess_data(SchaeferSize=400,split_ratio=0.9,group=None):
     """
+
     Carrega i pre-processa les dades dels datasets ADNI3 (AD, HC, MCI) amb la parcel·lació Schaefer 400.
 
     :param SchaeferSize: Nombre de parcel·les.
@@ -227,7 +231,7 @@ def train(
     :param validation_loader (DataLoader): Loader del conjunt de validació.
     :param epochs (int): Nombre d'èpoques d'entrenament
     :param patience (int): Nombre d'èpoques sense millora abans de parar.
-    :param learnin_rate (float): Taxa d'aprenentatge per a l'optimitzador.
+    :param learning_rate (float): Taxa d'aprenentatge per a l'optimitzador.
     :param lambd (float): Pes per a la regularització.
     :return: tuple -> Pèrdua d'entrenament, pèrdua de validació, millor model i època òptima.
     """
@@ -293,10 +297,49 @@ def train(
     return np.array(train_losses), np.array(val_losses), best_model, best_epoch
 
 # ============================================================================
+def plot_latent_tsne(latent_train, group_labels):
+    """
+    Aplica t-SNE a l'espai latent de tots els grups i els visualitza en 2D amb diferents colors.
+
+    :param latent_train (np.array): Representació latent de tots els grups..
+    :param group (np.array): Etiquetes dels grups per cada mostra.
+    return -> Mostra l'espai latent amb l'algorisme t-SNE.
+    """
+    print("Aplicant t-SNE a l'espai latent...")
+    tsne = TSNE(n_components=2, perplexity=30, random_state=0)
+    tsne_results = tsne.fit_transform(latent_train)
+
+    df_subset = pd.DataFrame({
+        'tsne-2d-one': tsne_results[:, 0],
+        'tsne-2d-two': tsne_results[:, 1],
+        'group': group_labels
+    })
+
+    palette = {"AD": "red", "MCI": "green", "HC": "blue"}
+
+    plt.figure(figsize=(16, 10))
+    sns.scatterplot(
+        x="tsne-2d-one", y="tsne-2d-two",
+        hue="group",
+        palette=palette,
+        data=df_subset,
+        color="blue",
+        alpha=0.3
+    )
+    plt.title("Visualització t-SNE de l'espai latent per grups")
+    plt.legend(title="Grups")
+    plt.show()
+
+# ============================================================================
 # ============================================================================
 
 def process(group):
-    # ============================================================================
+    """
+    Carrega les dades de l'autoencoder, genera la representació latent i retorna la reconstrucció obtinguda.
+
+    :param group (str): Conjunt de dades a processar.
+    :return: tuple -> sortida reconstruïda, model entrenat, dades d'entrenament i sèrie temporal.
+    """
     model_filename = f"model_{group}.pth"
 
     # Carrega i prepara les dades
@@ -378,33 +421,42 @@ def process(group):
         torch.Tensor(training_set).to(device, dtype=torch.float)
     ).detach().cpu().numpy()
 
-    return output_train, best_model, training_set, timeseries
+    return output_train, best_model, training_set, timeseries, latent_train
 
 # ============================================================================
 def plot(output_train, training_set, t_sub, group):
+    """
+    Analitza i compara la reconstrucció del model amb les dades originals.
+
+    :param output_train (np.array): Dades reconstruïdes per l'autoencoder.
+    :param training_set (np.array): Dades originals utilitzades per entrenar.
+    :param t_sub (int): Nombre de mostres per subjecte.
+    :param group (str): Grup al qual pertanyen les dades.
+    :return: Grafica les senyals originals i reconstruïdes i calcula les mètriques de similitud (SSIM i correlació).
+    """
     # Visualització de la reconstrucció
-    # plt.figure(figsize=(10, 15))
-    # plt.suptitle("Latent Decoded vs Original Signals - " f'{group}')
-    # for i in range(10):
-    #     plt.subplot(10, 1, i + 1)
-    #     plt.plot(output_train[:t_sub, i], label='Reconstructed', alpha=0.7)
-    #     plt.plot(training_set[:t_sub, i], label='Original', alpha=0.7)
-    #     plt.legend()
-    # plt.tight_layout(rect=[0, 0, 1, 0.96])
-    # plt.show()
-    #
-    # # Anàlisi de correlacions
-    # plt.figure(figsize=(8, 8))
-    # plt.title("Correlació del conjunt original")
-    # plt.imshow(np.corrcoef(training_set[:t_sub, :].T), cmap='viridis')
-    # plt.colorbar()
-    # plt.show()
-    #
-    # plt.figure(figsize=(8, 8))
-    # plt.title("Correlació del conjunt reconstruït")
-    # plt.imshow(np.corrcoef(output_train[:t_sub, :].T), cmap='viridis')
-    # plt.colorbar()
-    # plt.show()
+    plt.figure(figsize=(10, 15))
+    plt.suptitle("Reconstrucció latent vs Senyals originals - " f'{group}')
+    for i in range(5):
+        plt.subplot(10, 1, i + 1)
+        plt.plot(output_train[:t_sub, i], label='Reconstruïda', alpha=0.7)
+        plt.plot(training_set[:t_sub, i], label='Original', alpha=0.7)
+        plt.legend()
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+
+    # Anàlisi de correlacions
+    plt.figure(figsize=(8, 8))
+    plt.title("Correlació del conjunt original")
+    plt.imshow(np.corrcoef(training_set[:t_sub, :].T), cmap='viridis')
+    plt.colorbar()
+    plt.show()
+
+    plt.figure(figsize=(8, 8))
+    plt.title("Correlació del conjunt reconstruït")
+    plt.imshow(np.corrcoef(output_train[:t_sub, :].T), cmap='viridis')
+    plt.colorbar()
+    plt.show()
 
     # Comparació de correlacions
     original_corr = np.corrcoef(training_set[:t_sub, :])
@@ -447,9 +499,11 @@ def combine_encoders_decoders(encoder, decoder, input, device):
 # ============================================================================
 def calculate_fc(data_set, reshape):
     """
+    Calcula la matriu de connectivitat funcional (FC) per a cada subjecte.
 
-    :param data_set:
-    :return:
+    :param data_set (np.array): Dades d'entrada per calcular FC.
+    :param reshape (str): Si és 'S' s'han de reestructurar les dades en (subjectes, 197, 400). En cas contrari no cal.
+    :return: list of np.array -> Llista de matrius de correlació per subjecte.
     """
     # Càlcul FC
     FC_subject = []
@@ -490,19 +544,26 @@ def compute_similarity(fc_reconstructed, fc_normal):
             similarities.append(corr)
 
     return similarities
+
 # ============================================================================
 # ============================================================================
 def run():
     t_sub = 197
     # Entrenar models per cada grup
-    output_AD, model_AD, training_AD, data_AD = process('AD')
-    output_HC, model_HC, training_HC, data_HC = process('HC')
-    output_MCI, model_MCI, training_MCI, data_MCI = process('MCI')
+    output_AD, model_AD, training_AD, data_AD, latent_AD = process('AD')
+    output_HC, model_HC, training_HC, data_HC, latent_HC = process('HC')
+    output_MCI, model_MCI, training_MCI, data_MCI, latent_MCI = process('MCI')
 
     # Mostrar resultats per cada grup
     plot(output_AD, training_AD, t_sub, 'AD')
     plot(output_HC, training_HC, t_sub, 'HC')
     plot(output_MCI, training_MCI, t_sub, 'MCI')
+
+    # Mostrar l'espai latent amb l'algorisme t-SNE
+    latent_train_all = np.vstack([latent_AD, latent_HC, latent_MCI])
+    group_labels = (["AD"] * len(latent_AD)) + (["HC"] * len(latent_HC)) + (["MCI"] * len(latent_MCI))
+
+    plot_latent_tsne(latent_train_all, group_labels)
 
     # Combinar encoders i decoders de grups diferents
     print("Combinant encoders i decoders...")
