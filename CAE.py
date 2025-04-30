@@ -376,7 +376,7 @@ def process(group):
         torch.Tensor(training_set).to(device, dtype=torch.float)
     ).detach().cpu()
 
-    latent_train = np.array(latent_train) # Convertir a numpy array
+    latent_train = np.asarray(latent_train, dtype=np.float32) # Convertir a numpy array
     latent_per_subject = np.array([
         latent_train[t_sub * i:t_sub * (i+1), :]
         for i in range(len(latent_train) // t_sub)
