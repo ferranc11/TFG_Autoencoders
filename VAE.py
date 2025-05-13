@@ -432,7 +432,7 @@ def plot(output_train, training_set, t_sub, group):
     # Visualització de la reconstrucció
     plt.figure(figsize=(10, 15))
     plt.suptitle("Reconstrucció latent vs Senyals originals - " f'{group}')
-    for i in range(10):
+    for i in range(5):
         plt.subplot(10, 1, i + 1)
         plt.plot(output_train[:t_sub, i], label='Reconstruïda', alpha=0.7)
         plt.plot(training_set[:t_sub, i], label='Original', alpha=0.7)
