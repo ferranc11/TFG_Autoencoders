@@ -2,6 +2,10 @@
 
 Aquest repositori de GitHub recull el codi desenvolupat pel meu treball de fi de grau, titulat: **Simulació de l’evolució de l’Alzheimer mitjançant xarxes neuronals**, fet per Ferran Conchillo.
 
+## Objectiu del projecte
+
+L’objectiu del treball és analitzar i simular l’evolució de l’Alzheimer a través de xarxes neuronals basades en *autoencoders* i les seves variants, generant transformacions entre grups clínics (HC, MCI, AD) per simular possibles progressions de la malaltia.
+
 ## Requisits per a l'execució
 
 Per replicar correctament aquest projecte cal:
@@ -35,7 +39,3 @@ Aquest script s'utilitza per visualitzar i analitzar els resultats de les simula
 - **VAE.py**: Versió amb *variational autoencoders*. Conté les reconstruccions inicials, la distribució de l'espai latent i les simulacions generant els tres *deep fakes* neuronals entre grups.
 
 - **CAE.py**: Implementació amb *convolutional autoencoders*. Conté les reconstruccions inicials, la distribució de l'espai latent i les simulacions generant els tres *deep fakes* neuronals entre grups.
-
-## Objectiu del projecte
-
-L’objectiu del treball és analitzar i simular l’evolució de l’Alzheimer a través de xarxes neuronals basades en *autoencoders* i les seves variants, generant transformacions entre grups clínics (HC, MCI, AD) per simular possibles progressions de la malaltia.
