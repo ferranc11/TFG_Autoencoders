@@ -23,7 +23,6 @@ from ADNI_B import ADNI_B
 # %% Funció per carregar i pre-processar les dades
 def load_and_preprocess_data(SchaeferSize=400,split_ratio=0.9,group=None):
     """
-
     Carrega i pre-processa les dades dels datasets ADNI3 (AD, HC, MCI) amb la parcel·lació Schaefer 400.
 
     :param SchaeferSize: Nombre de parcel·les.
@@ -144,7 +143,15 @@ def create_dataloaders(training_data, validation_data, batch_size, num_workers=0
 # %% Definició de la xarxa neuronal
 
 class ConvAutoencoder(nn.Module):
+    """
+    Convolutional autoencoder (CAE) d'una dimensió per a reconstrucció de senyals.
+    """
     def __init__(self, latent_dim):
+        """
+        Inicialitza les capes de la xarxa.
+
+        :param latent_dim (int): Dimensió de l'espai latent.
+        """
         super(ConvAutoencoder, self).__init__()
 
         # Encoder
@@ -176,15 +183,32 @@ class ConvAutoencoder(nn.Module):
 
 
     def forward(self, x):
+        """
+        Executa la propagació endavant completa del CAE.
 
+        :param x (torch.Tensor): Entrada de la xarxa.
+        :return: torch.Tensor -> Sortida reconstruïda.
+        """
         x = self.encoder(x)
         x = self.decoder(x)
         return x
 
     def encode(self, x):
+        """
+        Codifica l'entrada a l'espai latent.
+
+        :param x (torch.Tensor): Entrada de la xarxa.
+        :return: torch.Tensor -> Representació en l'espai latent.
+        """
         return self.encoder(x)
 
     def decode(self, z):
+        """
+        Decodifica des de l'espai latent a l'espai original.
+
+        :param z (torch.Tensor): Representació latent.
+        :return: torch.Tensor -> Reconstrucció de l'entrada.
+        """
         return self.decoder(z)
 
 
@@ -194,7 +218,7 @@ def train_CAE(
     model, device, train_loader, validation_loader, epochs, patience, learning_rate, lambd
 ):
     """
-    Entrena el model d'autoencoder amb optimització de pèrdua i parada anticipada.
+    Entrena el model de convolutional autoencoder amb optimització de pèrdua i parada anticipada.
 
     :param model (nn.Module): Model d'autoencoder.
     :param device (str): Dispositiu a utilitzar ('cuda' o 'cpu').
@@ -272,7 +296,7 @@ def plot_latent_tsne(latent_train, group_labels):
     """
     Aplica t-SNE a l'espai latent de tots els grups i els visualitza en 2D amb diferents colors.
 
-    :param latent_train (np.array): Representació latent de tots els grups..
+    :param latent_train (np.array): Representació latent de tots els grups.
     :param group (np.array): Etiquetes dels grups per cada mostra.
     return -> Mostra l'espai latent amb l'algorisme t-SNE.
     """
@@ -306,10 +330,10 @@ def plot_latent_tsne(latent_train, group_labels):
 
 def process(group):
     """
-    Carrega les dades de l'autoencoder, genera la representació latent i retorna la reconstrucció obtinguda.
+    Carrega les dades del CAE, genera la representació latent i retorna la reconstrucció obtinguda.
 
     :param group (str): Conjunt de dades a processar.
-    :return: tuple -> sortida reconstruïda, model entrenat, dades d'entrenament i sèrie temporal.
+    :return: tuple -> Sortida reconstruïda, model entrenat, dades d'entrenament, sèrie temporal i representació latent.
     """
     model_filename = f"cae_model_{group}.pth"
 
@@ -346,30 +370,26 @@ def process(group):
     else:
         # Si el model no existeix, entrenar-lo
         print("No s'ha trobat un model entrenat. Iniciant entrenament...")
+
+        # Cronometrar el temps d'entrenament
+        start_time = time.time()  # Comença a comptar
+
         train_losses, val_losses, best_model, best_epoch = train_CAE(
             model, device, train_loader, val_loader, epochs=epochs, patience=patience, learning_rate=learning_rate,
             lambd=lambd
         )
+        end_time = time.time()  # Atura el comptador
+
+        # Temps total d'entrenament
+        training_time = end_time - start_time
+        print(f"Temps d'entrenament complet: {training_time:.2f} segons")
+
+        print(f"Entrenament completat. Millor època: {best_epoch + 1}.")
 
         # Guardar el model entrenat
         torch.save(best_model.state_dict(), model_filename)
         print(f"Model CAE entrenat guardat a {model_filename}")
 
-    # Cronometrar el temps d'entrenament
-    start_time = time.time()  # Comença a comptar
-
-    # # Entrenament del model
-    # train_losses, val_losses, best_model, best_epoch = train(
-    #     model, device, train_loader, val_loader, epochs=epochs, patience=patience, learning_rate=learning_rate, lambd=lambd
-    # )
-    #
-    # end_time = time.time()  # Atura el comptador
-    #
-    # # Temps total d'entrenament
-    # training_time = end_time - start_time
-    # print(f"Temps d'entrenament complet: {training_time:.2f} segons")
-    #
-    # print (f"Entrenament completat. Millor època: {best_epoch + 1}.")
 
     # Extracció de representació latent
     latent_train = best_model.encoder(
@@ -394,52 +414,6 @@ def process(group):
 
     return output_train, best_model, training_set, timeseries, latent_train
 
-# ============================================================================
-def plot(output_train, training_set, t_sub, group):
-    """
-    Analitza i compara la reconstrucció del model amb les dades originals.
-
-    :param output_train (np.array): Dades reconstruïdes per l'autoencoder.
-    :param training_set (np.array): Dades originals utilitzades per entrenar.
-    :param t_sub (int): Nombre de mostres per subjecte.
-    :param group (str): Grup al qual pertanyen les dades.
-    :return: Grafica les senyals originals i reconstruïdes i calcula les mètriques de similitud (SSIM i correlació).
-    """
-    # Visualització de la reconstrucció
-    # plt.figure(figsize=(10, 15))
-    # plt.suptitle("Latent Decoded vs Original Signals - " f'{group}')
-    # for i in range(10):
-    #     plt.subplot(10, 1, i + 1)
-    #     plt.plot(output_train[:t_sub, i], label='Reconstructed', alpha=0.7)
-    #     plt.plot(training_set[:t_sub, i], label='Original', alpha=0.7)
-    #     plt.legend()
-    # plt.tight_layout(rect=[0, 0, 1, 0.96])
-    # plt.show()
-    #
-    # # Anàlisi de correlacions
-    # plt.figure(figsize=(8, 8))
-    # plt.title("Correlació del conjunt original")
-    # plt.imshow(np.corrcoef(training_set[:t_sub, :].T), cmap='viridis')
-    # plt.colorbar()
-    # plt.show()
-    #
-    # plt.figure(figsize=(8, 8))
-    # plt.title("Correlació del conjunt reconstruït")
-    # plt.imshow(np.corrcoef(output_train[:t_sub, :].T), cmap='viridis')
-    # plt.colorbar()
-    # plt.show()
-
-    # Comparació de correlacions
-    original_corr = np.corrcoef(training_set[:t_sub, 0, :])
-    reconstructed_corr = np.corrcoef(output_train[:t_sub, 0, :])
-
-    # SSIM i correlació de matrius aplanades
-    ssim_value = ssim(original_corr, reconstructed_corr, data_range=original_corr.max() - original_corr.min())
-    corr_flat = np.corrcoef(original_corr.flatten(), reconstructed_corr.flatten()) [0, 1]
-
-    print(f"SSIM entre matrius de correlació: {ssim_value:.4f}.")
-    print(f"Coeficient de correlació entre matrius de correlació aplanades: {corr_flat:.4f}.")
-
 
 # ============================================================================
 # ============================================================================
@@ -447,8 +421,8 @@ def combine_encoders_decoders(encoder, decoder, input, device):
     """
     Combina l'encoder d'un model amb el decoder d'un altre i reconstrueix les dades.
 
-    :param encoder (AutoencoderNet): Model de l'encoder.
-    :param decoder (AutoencoderNet): Model del decoder.
+    :param encoder (ConvAutoencoder): Model de l'encoder.
+    :param decoder (ConvAutoencoder): Model del decoder.
     :param input (np.array): Dades d'entrada a l'encoder.
     :param device (str): Dispositiu d'execució.
     :return: np.array -> Dades reconstruïdes amb encoder i decoder de models diferents.
@@ -522,16 +496,14 @@ def compute_similarity(fc_reconstructed, fc_normal):
 # ============================================================================
 # ============================================================================
 def run():
+    """
+    Funció principal que executa tot el procés complet de reconstruccions i anàlisis amb convolutional autoencoders.
+    """
     t_sub = 197
     # Entrenar models per cada grup
     output_AD, model_AD, training_AD, data_AD, latent_AD = process('AD')
     output_HC, model_HC, training_HC, data_HC, latent_HC = process('HC')
     output_MCI, model_MCI, training_MCI, data_MCI, latent_MCI = process('MCI')
-
-    # Mostrar resultats per cada grup
-    plot(output_AD, training_AD, t_sub, 'AD')
-    plot(output_HC, training_HC, t_sub, 'HC')
-    plot(output_MCI, training_MCI, t_sub, 'MCI')
 
     # Mostrar l'espai latent amb l'algorisme t-SNE
     latent_train_all = np.vstack([latent_AD, latent_HC, latent_MCI])
@@ -619,7 +591,7 @@ def run():
         graphLabel='Similitud HC → AD amb els grups reals'
     )
 
-    print("FET")
+    print("CODI FINALITZAT!")
 
 if __name__ == '__main__':
     run()
