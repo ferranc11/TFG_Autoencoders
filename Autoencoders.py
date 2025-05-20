@@ -22,7 +22,6 @@ from ADNI_B import ADNI_B
 # %% Funció per carregar i pre-processar les dades
 def load_and_preprocess_data(SchaeferSize=400,split_ratio=0.9,group=None):
     """
-
     Carrega i pre-processa les dades dels datasets ADNI3 (AD, HC, MCI) amb la parcel·lació Schaefer 400.
 
     :param SchaeferSize: Nombre de parcel·les.
@@ -154,15 +153,6 @@ class AutoencoderNet(nn.Module):
             nn.Linear(in_features=271, out_features=142),
             nn.BatchNorm1d(num_features=142),
             nn.ReLU(),
-            # nn.Linear(in_features=144, out_features=16),
-            # nn.BatchNorm1d(num_features=16),
-            # nn.ReLU(),
-            # nn.Linear(in_features=64, out_features=32),
-            # nn.BatchNorm1d(num_features=32),
-            # nn.ReLU(),
-            # nn.Linear(in_features=32, out_features=16),
-            # nn.BatchNorm1d(num_features=35),
-            # nn.ReLU(),
             nn.Linear(in_features=142, out_features=latent_dim)
         )
 
@@ -173,15 +163,6 @@ class AutoencoderNet(nn.Module):
             nn.ReLU(),
             nn.Linear(in_features=142, out_features=271),
             nn.BatchNorm1d(num_features=271),
-            # nn.ReLU(),
-            # nn.Linear(in_features=144, out_features=272),
-            # nn.BatchNorm1d(num_features=272),
-            # nn.ReLU(),
-            # nn.Linear(in_features=64, out_features=400)
-            # nn.BatchNorm1d(num_features=128),
-            # nn.ReLU(),
-            # nn.Linear(in_features=128, out_features=256),
-            # nn.BatchNorm1d(num_features=256),
             nn.ReLU(),
             nn.Linear(in_features=271, out_features=400)
         )
@@ -191,7 +172,7 @@ class AutoencoderNet(nn.Module):
         Executa la propagació endavant completa de l'autoencoder.
 
         :param x (torch.Tensor): Entrada de la xarxa.
-        :return: torch.Tensor -> sortida reconstruïda.
+        :return: torch.Tensor -> Sortida reconstruïda.
         """
         encoded = self.encoder(x)
         decoded = self.decoder(encoded)
@@ -301,7 +282,7 @@ def plot_latent_tsne(latent_train, group_labels):
     """
     Aplica t-SNE a l'espai latent de tots els grups i els visualitza en 2D amb diferents colors.
 
-    :param latent_train (np.array): Representació latent de tots els grups..
+    :param latent_train (np.array): Representació latent de tots els grups.
     :param group (np.array): Etiquetes dels grups per cada mostra.
     return -> Mostra l'espai latent amb l'algorisme t-SNE.
     """
@@ -338,7 +319,7 @@ def process(group):
     Carrega les dades de l'autoencoder, genera la representació latent i retorna la reconstrucció obtinguda.
 
     :param group (str): Conjunt de dades a processar.
-    :return: tuple -> sortida reconstruïda, model entrenat, dades d'entrenament i sèrie temporal.
+    :return: tuple -> Sortida reconstruïda, model entrenat, dades d'entrenament, sèrie temporal i representació latent.
     """
     model_filename = f"model_{group}.pth"
 
@@ -375,30 +356,26 @@ def process(group):
     else:
         # Si el model no existeix, entrenar-lo
         print("No s'ha trobat un model entrenat. Iniciant entrenament...")
+
+        # Cronometrar el temps d'entrenament
+        start_time = time.time()  # Comença a comptar
+
         train_losses, val_losses, best_model, best_epoch = train(
             model, device, train_loader, val_loader, epochs=epochs, patience=patience, learning_rate=learning_rate,
             lambd=lambd
         )
+        end_time = time.time()  # Atura el comptador
+
+        # Temps total d'entrenament
+        training_time = end_time - start_time
+        print(f"Temps d'entrenament complet: {training_time:.2f} segons")
+
+        print(f"Entrenament completat. Millor època: {best_epoch + 1}.")
 
         # Guardar el model entrenat
         torch.save(best_model.state_dict(), model_filename)
         print(f"Model entrenat guardat a {model_filename}")
 
-    # Cronometrar el temps d'entrenament
-    start_time = time.time()  # Comença a comptar
-
-    # # Entrenament del model
-    # train_losses, val_losses, best_model, best_epoch = train(
-    #     model, device, train_loader, val_loader, epochs=epochs, patience=patience, learning_rate=learning_rate, lambd=lambd
-    # )
-    #
-    # end_time = time.time()  # Atura el comptador
-    #
-    # # Temps total d'entrenament
-    # training_time = end_time - start_time
-    # print(f"Temps d'entrenament complet: {training_time:.2f} segons")
-    #
-    # print (f"Entrenament completat. Millor època: {best_epoch + 1}.")
 
     # Extracció de representació latent
     latent_train = best_model.encoder(
@@ -548,6 +525,9 @@ def compute_similarity(fc_reconstructed, fc_normal):
 # ============================================================================
 # ============================================================================
 def run():
+    """
+    Funció principal que executa tot el procés complet de reconstruccions i anàlisis amb autoencoders.
+    """
     t_sub = 197
     # Entrenar models per cada grup
     output_AD, model_AD, training_AD, data_AD, latent_AD = process('AD')
@@ -645,7 +625,7 @@ def run():
         graphLabel='Similitud HC → AD amb els grups reals'
     )
 
-    print("FET")
+    print("CODI FINALITZAT!")
 
 if __name__ == '__main__':
     run()
