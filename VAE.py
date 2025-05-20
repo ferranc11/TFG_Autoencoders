@@ -136,7 +136,7 @@ def create_dataloaders(training_data, validation_data, batch_size, num_workers=0
 
 class VariationalAutoencoder(nn.Module):
     """
-    Autoencoder amb arquitectura lineal i Batch Normalization.
+    Variational autoencoder (VAE) amb arquitectura lineal i Batch Normalization.
     """
 
     def __init__(self, latent_dim):
@@ -160,11 +160,7 @@ class VariationalAutoencoder(nn.Module):
             nn.ReLU(),
             nn.Linear(in_features=64, out_features=32),
             nn.BatchNorm1d(num_features=32),
-            nn.ReLU(),
-            # nn.Linear(in_features=32, out_features=16),
-            # # nn.BatchNorm1d(num_features=35),
-            # nn.ReLU(),
-            # nn.Linear(in_features=16, out_features=latent_dim)
+            nn.ReLU()
         )
 
         # Afegim les capes de mu i logvar per reparametritzar
@@ -186,12 +182,15 @@ class VariationalAutoencoder(nn.Module):
             nn.BatchNorm1d(num_features=271),
             nn.ReLU(),
             nn.Linear(in_features=271, out_features=400),
-            # nn.BatchNorm1d(num_features=256),
-            # nn.Sigmoid()
-            # nn.Linear(in_features=256, out_features=400)
         )
 
     def encode(self, x):
+        """
+        Codifica l'entrada en dues sortides: mitjana i log-variància de la distribució latent.
+
+        :param x (torch.Tensor): Entrada de la xarxa.
+        :return: Tuple[torch.Tensor, torch.Tensor] -> (mu, logvar).
+        """
         x = self.encoder(x)
         mu = self.mu(x)
         logvar = self.log_var(x)
@@ -200,6 +199,13 @@ class VariationalAutoencoder(nn.Module):
 
 
     def reparameterize(self, mu, logvar):
+        """
+        Aplica la reparametrització i retorna la mostra.
+
+        :param mu (torch.Tensor): Mitjana de la distribució latent.
+        :param logvar (torch.Tensor): Log-variància de la distribució latent.
+        :return: torch.Tensor -> Vector latent z mostrejat.
+        """
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
 
@@ -207,10 +213,22 @@ class VariationalAutoencoder(nn.Module):
 
 
     def decode(self, z):
+        """
+        Reconstrueix la dada original a partir del vector latent.
+
+        :param z (torch.Tensor): Vector latent mostrejat.
+        :return: torch.Tensor -> Reconstrucció de l'entrada.
+        """
         return self.decoder(z)
 
 
     def forward(self, x):
+        """
+        Executa la propagació endavant completa del VAE.
+
+        :param x (torch.Tensor): Entrada de la xarxa.
+        :return: Tuple[torch.Tensor, torch.Tensor, torch.Tensor] -> (reconstrucció, mu, logvar).
+        """
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
         recon_x = self.decode(z)
@@ -220,6 +238,14 @@ class VariationalAutoencoder(nn.Module):
 # ============================================================================
 # %% Funció de pèrdua
 def loss_function_vae(recon_loss, mu, logvar):
+    """
+    Càlcul de la funció de pèrdua combinant la pèrdua de reconstrucció (MSE) i la divergència Kullback-Leibler.
+
+    :param recon_loss (torch.Tensor): Pèrdua de reconstrucció (MSE).
+    :param mu (torch.Tensor): Mitjana de la distribució latent.
+    :param logvar (torch.Tensor): Log-variància de la distribució latent.
+    :return: torch.Tensor -> Pèrdua total (reconstrucció + KL).
+    """
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())  # Divergència KL
 
     return recon_loss + KLD
@@ -230,7 +256,7 @@ def train_vae(
     model, device, train_loader, validation_loader, epochs, patience, learning_rate, lambd
 ):
     """
-    Entrena el model d'autoencoder amb optimització de pèrdua i parada anticipada.
+    Entrena el model de variatonal autoencoder amb optimització de pèrdua i parada anticipada.
 
     :param model (nn.Module): Model d'autoencoder.
     :param device (str): Dispositiu a utilitzar ('cuda' o 'cpu').
@@ -310,7 +336,7 @@ def plot_latent_tsne(latent_train, group_labels):
     """
     Aplica t-SNE a l'espai latent de tots els grups i els visualitza en 2D amb diferents colors.
 
-    :param latent_train (np.array): Representació latent de tots els grups..
+    :param latent_train (np.array): Representació latent de tots els grups.
     :param group (np.array): Etiquetes dels grups per cada mostra.
     return -> Mostra l'espai latent amb l'algorisme t-SNE.
     """
@@ -343,7 +369,12 @@ def plot_latent_tsne(latent_train, group_labels):
 # ============================================================================
 
 def process(group):
-    # ============================================================================
+    """
+    Carrega les dades del VAE, genera la representació latent i retorna la reconstrucció obtinguda.
+
+    :param group (str): Conjunt de dades a processar.
+    :return: tuple -> Sortida reconstruïda, model entrenat, dades d'entrenament, sèrie temporal i representació latent.
+    """
     model_filename = f"vae_model_{group}.pth"
 
     # Carrega i prepara les dades
@@ -361,7 +392,7 @@ def process(group):
     epochs = 500
     patience = 50
     SEED = 5
-    latent_dim = 2
+    latent_dim = 15
     lambd = 0.0
 
     # Configuració de llavor i dispositiu
@@ -379,41 +410,32 @@ def process(group):
     else:
         # Si el model no existeix, entrenar-lo
         print("No s'ha trobat un model entrenat. Iniciant entrenament...")
+
+        # Cronometrar el temps d'entrenament
+        start_time = time.time()  # Comença a comptar
+
         train_losses, val_losses, best_model, best_epoch = train_vae(
             model, device, train_loader, val_loader, epochs=epochs, patience=patience, learning_rate=learning_rate,
             lambd=lambd
         )
+        end_time = time.time()  # Atura el comptador
+
+        # Temps total d'entrenament
+        training_time = end_time - start_time
+        print(f"Temps d'entrenament complet: {training_time:.2f} segons")
+
+        print(f"Entrenament completat. Millor època: {best_epoch + 1}.")
 
         # Guardar el model entrenat
         torch.save(best_model.state_dict(), model_filename)
         print(f"Model VAE guardat a {model_filename}")
 
-    # Cronometrar el temps d'entrenament
-    start_time = time.time()  # Comença a comptar
-
-    # # Entrenament del model
-    # train_losses, val_losses, best_model, best_epoch = train(
-    #     model, device, train_loader, val_loader, epochs=epochs, patience=patience, learning_rate=learning_rate, lambd=lambd
-    # )
-    #
-    # end_time = time.time()  # Atura el comptador
-    #
-    # # Temps total d'entrenament
-    # training_time = end_time - start_time
-    # print(f"Temps d'entrenament complet: {training_time:.2f} segons")
-    #
-    # print (f"Entrenament completat. Millor època: {best_epoch + 1}.")
 
     # Extracció de representació latent
     with torch.no_grad():
         mu, logvar = best_model.encode(torch.Tensor(training_set).to(device, dtype=torch.float))
         latent_train = best_model.reparameterize(mu, logvar).cpu().numpy()
 
-    # latent_train = np.array(latent_train) # Convertir a numpy array
-    # latent_per_subject = np.array([
-    #     latent_train[t_sub * i:t_sub * (i+1), :]
-    #     for i in range(len(latent_train) // t_sub)
-    # ])
 
     # Exportació de la representació latent
     output_file = f'tseries_ADNI3_{group}_matching_sch400_QC.txt'
@@ -429,6 +451,15 @@ def process(group):
 
 # ============================================================================
 def plot(output_train, training_set, t_sub, group):
+    """
+    Analitza i compara la reconstrucció del model amb les dades originals.
+
+    :param output_train (np.array): Dades reconstruïdes pel variatonal autoencoder.
+    :param training_set (np.array): Dades originals utilitzades per entrenar.
+    :param t_sub (int): Nombre de mostres per subjecte.
+    :param group (str): Grup al qual pertanyen les dades.
+    :return: Grafica les senyals originals i reconstruïdes i calcula les mètriques de similitud (SSIM i correlació).
+    """
     # Visualització de la reconstrucció
     plt.figure(figsize=(10, 15))
     plt.suptitle("Reconstrucció latent vs Senyals originals - " f'{group}')
@@ -471,8 +502,8 @@ def combine_encoders_decoders(encoder, decoder, input, device):
     """
     Combina l'encoder d'un model amb el decoder d'un altre i reconstrueix les dades.
 
-    :param encoder (AutoencoderNet): Model de l'encoder.
-    :param decoder (AutoencoderNet): Model del decoder.
+    :param encoder (VariationalAutoencoder): Model de l'encoder.
+    :param decoder (VariationalAutoencoder): Model del decoder.
     :param input (np.array): Dades d'entrada a l'encoder.
     :param device (str): Dispositiu d'execució.
     :return: np.array -> Dades reconstruïdes amb encoder i decoder de models diferents.
@@ -495,9 +526,11 @@ def combine_encoders_decoders(encoder, decoder, input, device):
 # ============================================================================
 def calculate_fc(data_set, reshape):
     """
+    Calcula la matriu de connectivitat funcional (FC) per a cada subjecte.
 
-    :param data_set:
-    :return:
+    :param data_set (np.array): Dades d'entrada per calcular FC.
+    :param (str): Si és 'S' s'han de reestructurar les dades en (subjectes, 197, 400). En cas contrari no cal.
+    :return: list of np.array -> Llista de matrius de correlació per subjecte.
     """
     # Càlcul FC
     FC_subject = []
@@ -541,13 +574,16 @@ def compute_similarity(fc_reconstructed, fc_normal):
 # ============================================================================
 # ============================================================================
 def run():
+    """
+    Funció principal que executa tot el procés complet de reconstruccions i anàlisis amb variatonal autoencoders.
+    """
     t_sub = 197
     # Entrenar models per cada grup
     output_AD, model_AD, training_AD, data_AD, latent_AD = process('AD')
     output_HC, model_HC, training_HC, data_HC, latent_HC = process('HC')
     output_MCI, model_MCI, training_MCI, data_MCI, latent_MCI = process('MCI')
 
-    # # Mostrar resultats per cada grup
+    # Mostrar resultats per cada grup
     plot(output_AD, training_AD, t_sub, 'AD')
     plot(output_HC, training_HC, t_sub, 'HC')
     plot(output_MCI, training_MCI, t_sub, 'MCI')
@@ -638,7 +674,7 @@ def run():
         graphLabel='Similitud HC → AD amb els grups reals'
     )
 
-    print("FET")
+    print("CODI FINALITZAT!")
 
 if __name__ == '__main__':
     run()
