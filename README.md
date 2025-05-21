@@ -39,3 +39,13 @@ Aquest script s'utilitza per visualitzar i analitzar els resultats de les simula
 - **VAE.py**: Versió amb *variational autoencoders*. Conté les reconstruccions inicials, la distribució de l'espai latent i les simulacions generant els tres *deep fakes* neuronals entre grups.
 
 - **CAE.py**: Implementació amb *convolutional autoencoders*. Conté les reconstruccions inicials, la distribució de l'espai latent i les simulacions generant els tres *deep fakes* neuronals entre grups.
+
+## Referències
+
+- Implementing an Autoencoder in PyTorch [Internet]. GeeksforGeeks; 2021. Disponible a: https://www.geeksforgeeks.org/implementing-an-autoencoder-in-pytorch/
+
+- Sofeikov K. Implementing Variational Autoencoders from scratch [Internet]. Medium; 2023. Disponible a: https://medium.com/@sofeikov/implementing-variational-autoencoders-from-scratch-533782d8eb95
+
+- Implement Convolutional Autoencoder in PyTorch with CUDA [Internet]. GeeksforGeeks; 2023. Disponible a: https://www.geeksforgeeks.org/implement-convolutional-autoencoder-in-pytorch-with-cuda/
+
+- Derksen L. Using T-SNE in Python to Visualize High-Dimensional Data Sets [Internet]. Built In. Disponible a: https://builtin.com/data-science/tsne-python
