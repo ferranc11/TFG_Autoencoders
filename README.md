@@ -42,6 +42,8 @@ Aquest script s'utilitza per visualitzar i analitzar els resultats de les simula
 
 - **CAE.py**: Implementació amb *convolutional autoencoders*. Conté les reconstruccions inicials, la distribució de l'espai latent i les simulacions generant els tres *deep fakes* neuronals entre grups.
 
+- **La carpeta Proves Arquitectura Xarxa**: conté cinc fitxers .py creats específicament per dur a terme les proves necessàries per trobar l’arquitectura òptima. Inclouen codi que es va anar modificant iterativament per permetre múltiples proves, desar els resultats i visualitzar-los.
+
 ## Referències
 
 - Implementing an Autoencoder in PyTorch [Internet]. GeeksforGeeks; 2021. Disponible a: https://www.geeksforgeeks.org/implementing-an-autoencoder-in-pytorch/
