@@ -32,6 +32,8 @@ Aquest script s'utilitza per visualitzar i analitzar els resultats de les simula
 
 - **p_values.py**
 
+**Llibreria del meu tutor**: https://github.com/dagush/LibBrain.git
+
 ## Fitxers propis
 
 - **Autoencoders.py**: Entrenament i simulació mitjançant *autoencoders* simples. Conté les reconstruccions inicials, la distribució de l'espai latent i les simulacions generant els tres *deep fakes* neuronals entre grups.
