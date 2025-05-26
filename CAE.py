@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset
 import seaborn as sns
 import matplotlib.pyplot as plt
-import time # importar el mòdul time per mesurar el temps
+import time
 import p_values as p_values
 
 from scipy import stats
