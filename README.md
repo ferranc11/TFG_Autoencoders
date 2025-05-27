@@ -16,7 +16,7 @@ Per replicar correctament aquest projecte cal:
 
 - Recomanable utilitzar un entorn virtual per mantenir un entorn de treball net.
 
-Cal tenir en compte que per poder executar aquest codi és necessari disposar del conjunt de dades utilitzat, extret de la base de dades ADNI. Alternativament, es poden utilitzar dades de fMRI de subjectes classificats en els tres grups clínics (HC, MCI i AD), juntament amb les seves matrius de connectivitat.
+Cal tenir en compte que per poder executar aquest codi és necessari disposar del conjunt de dades utilitzat, extret de la base de dades ADNI. Alternativament, es poden fer servir dades de fMRI de subjectes classificats en els tres grups clínics (HC, MCI i AD), juntament amb les seves matrius de connectivitat.
 
 ## Fitxers externs (aportats pel tutor)
 
